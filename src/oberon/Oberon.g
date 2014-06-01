@@ -1,12 +1,30 @@
 grammar Oberon;
 
+
+
 options {
   language=Java;
   output=AST;
 }
 
+
+tokens {
+  STATEMENTSEQUENCE;
+  SET;
+  STATEMENT2;
+  DESIGNATOR;
+  ASSIGNMENT;
+  PROCEDURECALL;
+  IDLIST;
+  COND;
+}
+
+@members { boolean expr = false; 
+           String test = ""; }
+
 @lexer::header{ package oberon; }
 @parser::header{ package oberon; }
+
 
 WS: ('\t' | ' ' | '\r' | '\n' )+ { skip(); };
 
@@ -16,26 +34,27 @@ fragment OTHER  :   ' ' | '.' | ':' | '\\"';
 
 fragment CHARACTER: LETTER | DIGIT | OTHER;
 
-module: 'MODULE' IDENTIFIER ';' importlist? declarationsequence ('BEGIN' statementsequence)? 'END' IDENTIFIER '.' EOF;
+module:       'MODULE'^ IDENTIFIER ';'! importlist? declarationsequence ('BEGIN'! statementsequence)? 'END'! IDENTIFIER! '.'! EOF!;
 
-IDENTIFIER: LETTER (LETTER|DIGIT)*;
-importlist: 'IMPORT' importo (',' importo)* ';';
-importo: IDENTIFIER (':=' IDENTIFIER)?;
+IDENTIFIER:   LETTER (LETTER|DIGIT)*;
+
+importlist:   'IMPORT' importo (',' importo)* ';'
+              -> importo+;
+              
+importo:      IDENTIFIER (':='! IDENTIFIER)?;
 
 
-declarationsequence: ( 'CONST' (constantdeclaration ';')* | 'TYPE' (typedeclaration ';')* | 'VAR' (variabledeclaration ';')* )*;
+declarationsequence: ( 'CONST'^ (constantdeclaration ';'!)* | 'TYPE'^ (typedeclaration ';'!)* | 'VAR'^ (variabledeclaration ';'!)* )*;
  
-constantdeclaration: identifierdefinition '=' constantexpression;
+constantdeclaration: identifierdefinition '='! constantexpression;
 identifierdefinition: IDENTIFIER '*'?;
 
 constantexpression: expression;
-expression: simpleexpression (relation simpleexpression)?;
+expression: simpleexpression (relation^ simpleexpression)?;
 
 simpleexpression: ('+'|'-')? term (addoperator term)*;
 term: factor (multoperator factor)*;
 factor: number | charconstant | string | 'NIL' | set | designator actualparameters? | '(' expression ')' | '~' factor;
-
-
 
 number: INTEGER | REAL;
 INTEGER: DIGIT (DIGIT* | ('A' | 'B' | 'C' | 'D' | 'E' | 'F')* 'H'); 
@@ -44,15 +63,24 @@ REAL: DIGIT+ '.' DIGIT* SCALEFACTOR?;
 
 SCALEFACTOR:  ( 'E' | 'D' ) ( '+' | '-')? DIGIT DIGIT*;
 
-charconstant: '"' CHARACTER '"' | DIGIT INTEGER* 'X';
+charconstant: '"'! CHARACTER '"'! | DIGIT INTEGER* 'X';
 
-string: '"' CHARACTER* '"';
-set: '{' (element (',' element)*)? '}';
+string:   '"'! CHARACTER* '"'!;
+
+set:      '{' (element (',' element)*)? '}' -> ^(SET element+);
+
 element: expression ('..' expression)?;
-designator: qualifiedidentifier ('.' IDENTIFIER | '[' expressionlist ']' | '(' qualifiedidentifier ')' | '^')*;
+
+//designator: qualifiedidentifier ('.' i=IDENTIFIER | '[' e=expressionlist ']' | '(' q=qualifiedidentifier  ')' | '^')*
+//            -> ^(DESIGNATOR qualifiedidentifier $i? $e? $q? '^'? );
+//designator: qualifiedidentifier ( i=identlist | '[' e=expressionlist ']' | '(' q=qualifiedidentifier  ')' | '^')*
+//            -> ^(DESIGNATOR qualifiedidentifier $i? $e? $q? '^'?);
+designator: qualifiedidentifier ( i=identlist | '[' e=expressionlist ']' | '(' q=qualifiedidentifier  ')' | '^')*
+            -> ^(DESIGNATOR qualifiedidentifier $i?) $e? $q? '^'?;
+identlist: ('.' IDENTIFIER)+ -> ^(IDLIST IDENTIFIER+) ;
 
 expressionlist: expression ( ',' expression)*;
-actualparameters: '(' expressionlist? ')';
+actualparameters: '('! expressionlist? ')'!;
 
 multoperator: '*' | '/' | 'DIV' | 'MOD' | '&';
 addoperator: '+' | '-' | 'OR';
@@ -61,7 +89,9 @@ relation: '=' | '#' | '<' | '<=' | '>' | '>=' | 'IN' | 'IS';
 typedeclaration: identifierdefinition '=' type;
 type: qualifiedidentifier | arraytype | recordtype | pointertype | proceduretype;
 
-qualifiedidentifier: IDENTIFIER ('.' IDENTIFIER)?;
+//qualifiedidentifier: i1=IDENTIFIER ('.' i2=IDENTIFIER)? -> ^(QUALIDENT $i1 $i2?);
+qualifiedidentifier: i1=IDENTIFIER ('.' i2=IDENTIFIER)? -> $i1 $i2?;
+
 arraytype: 'ARRAY' length (',' length)* 'OF' type;
 length: constantexpression;
 
@@ -77,32 +107,38 @@ variabledeclaration: identifierlist ':' type;
 proceduredeclaration: procedureheading ';' procedurebody IDENTIFIER;
 procedureheading: 'PROCEDURE' '*'? identifierdefinition formalparameters?;
 
-formalparameters: '(' (formalparametersection ( ';' formalparametersection)*)? ')' (':' qualifiedidentifier)?;
+formalparameters: '('! (formalparametersection ( ';' formalparametersection)*)? ')'! (':' qualifiedidentifier)?;
 
 formalparametersection: 'VAR'? IDENTIFIER (',' IDENTIFIER)* ':' formaltype;
 formaltype: ('ARRAY' 'OF')* ( qualifiedidentifier | proceduretype );
 procedurebody: declarationsequence ('BEGIN' statementsequence)? 'END';
 forwarddeclaration: 'PROCEDURE' '^' IDENTIFIER '*'? formalparameters?; 
-statementsequence: statement (';' statement)*;
 
-//statement: (assignment | procedurecall | ifstatement | casestatement | whilestatement | repeatstatement | loopstatement | withstatement | 'EXIT' | ('RETURN' expression?))?;
+statementsequence: statement (';' statement)* -> ^(STATEMENTSEQUENCE statement+) ;
+
 statement: (statement2 | ifstatement | casestatement | whilestatement | repeatstatement | loopstatement | withstatement | 'EXIT' | ('RETURN' expression?))?;
-statement2: designator (':=' expression | procedurecall);
+
+statement2: designator (':=' expression {expr=true;} | procedurecall) 
+            -> {expr}? ^(ASSIGNMENT designator expression)
+            -> {expr=false}? ^(PROCEDURECALL designator procedurecall)
+            -> ^(STATEMENT2 designator expression? procedurecall?);
 
 procedurecall: actualparameters?;
 //assignment: designator ':=' expression;
 //procedurecall: designator actualparameters?;
 
-ifstatement: 'IF' expression 'THEN' statementsequence ('ELSIF' expression 'THEN' statementsequence)* ('ELSE' statementsequence)? 'END';
+ifstatement: 'IF' e1=expression 'THEN' s1=statementsequence ('ELSIF' e2=expression 'THEN' s2=statementsequence)* ('ELSE' s3=statementsequence)? 'END'
+            -> ^('IF' ^(COND $e1) $s1 ^('ELSIF' $e2 $s2)? ^('ELSE' $s3)? );
 
-casestatement: 'CASE' expression 'OF' ocase ('|' ocase)* ('ELSE' statementsequence)? 'END';
+casestatement: 'CASE'^ expression 'OF'! ocase ('|' ocase)* ('ELSE' statementsequence)? 'END'!;
  
 ocase: (caselabellist ':' statementsequence)?;
 
 caselabellist: caselabels (',' caselabels)*;
 caselabels: constantexpression ('\.\.' constantexpression)?;
-whilestatement: 'WHILE' expression 'DO' statementsequence 'END';
-repeatstatement: 'REPEAT' statementsequence 'UNTIL' expression;
-loopstatement: 'LOOP' statementsequence 'END';
 
-withstatement: 'WITH' qualifiedidentifier ':' qualifiedidentifier 'DO' statementsequence 'END';
+whilestatement: 'WHILE'^ expression 'DO'! statementsequence 'END'!;
+repeatstatement: 'REPEAT'^ statementsequence 'UNTIL'! expression;
+loopstatement: 'LOOP'^ statementsequence 'END'!;
+
+withstatement: 'WITH'^ qualifiedidentifier ':' qualifiedidentifier 'DO'! statementsequence 'END'!;
