@@ -129,6 +129,22 @@ loopstatement:          'LOOP'^ statementsequence 'END'!;
 
 withstatement:          'WITH'^ qualifiedidentifier ':' qualifiedidentifier 'DO'! statementsequence 'END'!;
 
-// PROCEDURES
-oberonstatement:        procnew;
+// PROCEDURES from language report
+oberonstatement:        procnew | procabs | procodd | proccap | procash | proclen |
+                        procmaxmin | procsize | procinc | procdec | procincl |
+                        procexcl | proccopy | prochalt;
+
 procnew:                'NEW'^ '('! qualifiedidentifier ')'!;
+procabs:                'ABS'^ '('! number ')'!;
+procodd:                'ODD'^ '('! INTEGER ')'!;
+proccap:                'CAP'^ '('! CHARACTER ')'!;
+procash:                'ASH'^ '('! INTEGER ')'!;
+proclen:                'LEN'^ '('! qualifiedidentifier (',' INTEGER)? ')'!;
+procmaxmin:             ('MAX'^|'MIN'^) '('! qualifiedidentifier | set ')'!;
+procsize:               'SIZE'^ '('! qualifiedidentifier ')'!;
+procinc:                'INC'^ '('! INTEGER (','! INTEGER)? ')'!;
+procdec:                'DEC'^ '('! INTEGER (','! INTEGER)? ')'!;
+procincl:               'INCL'^ '('! set ','! INTEGER ')'!;
+procexcl:               'EXCL'^ '('! set ','! INTEGER ')'!;
+proccopy:               'COPY'^ '('! qualifiedidentifier ','! qualifiedidentifier ')'!;
+prochalt:               'HALT'^ '('! INTEGER ')'!;
