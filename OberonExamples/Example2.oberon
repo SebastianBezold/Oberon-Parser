@@ -1,0 +1,15 @@
+ MODULE Vererbung0;
+ 
+ TYPE
+    Punkt* = POINTER TO PunktBeschreibung;
+
+ VAR
+    punkt1: Punkt;
+ 
+ BEGIN
+
+    NEW (punkt1);
+    punkt1.x := 1;
+    punkt1.y := 1;
+    punkt1.Zeichne (); 
+ END Vererbung0.
