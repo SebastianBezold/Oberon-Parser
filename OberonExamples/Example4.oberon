@@ -1,5 +1,5 @@
  MODULE simple;
  
  BEGIN
- 	punkt1.x.h.f := 1;  
+ 	IF x < y THEN x := 5 END;  
  END simple.

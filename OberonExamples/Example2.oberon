@@ -9,6 +9,7 @@
  BEGIN
 
     NEW (punkt1);
+    IF x < y THEN x := y END;
     punkt1.x := 1;
     punkt1.y := 1;
     punkt1.Zeichne (); 
