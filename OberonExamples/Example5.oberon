@@ -1,0 +1,15 @@
+MODULE OberonTest;
+ 
+VAR 
+	punkt1: Punkt;
+	
+BEGIN
+	(* NEW PROCEDURE *)
+	NEW (punkt1);
+	
+	(* IF Statement *)
+	IF x < y THEN x := 5 END;
+	
+	(* Assignment *)
+	punkt1.x := 1;
+END OberonTest.

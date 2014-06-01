@@ -25,24 +25,31 @@ tokens {
 @lexer::header{ package oberon; }
 @parser::header{ package oberon; }
 
-
+// Skip comments and whitespace
+COMMENT : '(*' (options{greedy=false;}: .)* '*)' {skip();};
 WS: ('\t' | ' ' | '\r' | '\n' )+ { skip(); };
 
-fragment LETTER:  ('a'..'z' | 'A'..'Z');
-fragment DIGIT: '0'..'9';
-fragment OTHER  :   ' ' | '.' | ':' | '\\"';
 
-fragment CHARACTER: LETTER | DIGIT | OTHER;
+fragment LETTER:      'a'..'z' | 'A'..'Z';
+fragment DIGIT:       '0'..'9';
+fragment OTHER:       ' ' | '.' | ':' | '\\"';
+fragment CHARACTER:   LETTER | DIGIT | OTHER;
+fragment HEXDIGIT:    DIGIT | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 
+IDENTIFIER:   LETTER ( LETTER | DIGIT )*;
+INTEGER:      DIGIT+ | DIGIT HEXDIGIT* 'H'; 
+REAL:         DIGIT+ '.' DIGIT* SCALEFACTOR?;
+SCALEFACTOR:  ( 'E' | 'D' ) ( '+' | '-')? DIGIT DIGIT*;
+CHARCONST:    '"' CHARACTER '"' | DIGIT HEXDIGIT* 'X';
+STRING:       '"' CHARACTER* '"';
+
+// Start-rule
 module:       'MODULE'^ IDENTIFIER ';'! importlist? declarationsequence ('BEGIN'! statementsequence)? 'END'! IDENTIFIER! '.'! EOF!;
-
-IDENTIFIER:   LETTER (LETTER|DIGIT)*;
 
 importlist:   'IMPORT' importo (',' importo)* ';'
               -> importo+;
               
 importo:      IDENTIFIER (':='! IDENTIFIER)?;
-
 
 declarationsequence: ( 'CONST'^ (constantdeclaration ';'!)* | 'TYPE'^ (typedeclaration ';'!)* | 'VAR'^ (variabledeclaration ';'!)* )*;
  
@@ -54,18 +61,9 @@ expression: simpleexpression (relation^ simpleexpression)?;
 
 simpleexpression: ('+'|'-')? term (addoperator term)*;
 term: factor (multoperator factor)*;
-factor: number | charconstant | string | 'NIL' | set | designator actualparameters? | '(' expression ')' | '~' factor;
+factor: number | CHARCONST | STRING | 'NIL' | set | designator actualparameters? | '(' expression ')' | '~' factor;
 
 number: INTEGER | REAL;
-INTEGER: DIGIT (DIGIT* | ('A' | 'B' | 'C' | 'D' | 'E' | 'F')* 'H'); 
-//HEXDIGIT: DIGIT | 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
-REAL: DIGIT+ '.' DIGIT* SCALEFACTOR?;
-
-SCALEFACTOR:  ( 'E' | 'D' ) ( '+' | '-')? DIGIT DIGIT*;
-
-charconstant: '"'! CHARACTER '"'! | DIGIT INTEGER* 'X';
-
-string:   '"'! CHARACTER* '"'!;
 
 set:      '{' (element (',' element)*)? '}' -> ^(SET element+);
 
@@ -116,7 +114,7 @@ forwarddeclaration: 'PROCEDURE' '^' IDENTIFIER '*'? formalparameters?;
 
 statementsequence: statement (';' statement)* -> ^(STATEMENTSEQUENCE statement+) ;
 
-statement: (statement2 | ifstatement | casestatement | whilestatement | repeatstatement | loopstatement | withstatement | 'EXIT' | ('RETURN' expression?))?;
+statement: (statement2 | oberonstatement | ifstatement | casestatement | whilestatement | repeatstatement | loopstatement | withstatement | 'EXIT' | ('RETURN' expression?))?;
 
 statement2: designator (':=' expression {expr=true;} | procedurecall) 
             -> {expr}? ^(ASSIGNMENT designator expression)
@@ -142,3 +140,7 @@ repeatstatement: 'REPEAT'^ statementsequence 'UNTIL'! expression;
 loopstatement: 'LOOP'^ statementsequence 'END'!;
 
 withstatement: 'WITH'^ qualifiedidentifier ':' qualifiedidentifier 'DO'! statementsequence 'END'!;
+
+// PROCEDURES
+oberonstatement: procnew;
+procnew: 'NEW'^ '('! qualifiedidentifier ')'!;
