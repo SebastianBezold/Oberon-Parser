@@ -1,0 +1,38 @@
+ MODULE Vererbung1;
+ 
+ TYPE
+ 
+    GraphischesObjekt* = POINTER TO GraphischesObjektBeschreibung;
+    GraphischesObjektBeschreibung = RECORD farbe*: LONGINT; END;
+ 
+    Punkt* = POINTER TO PunktBeschreibung;
+    PunktBeschreibung = RECORD (GraphischesObjekt) x*, y*: LONGINT; END;
+ 
+    Linie* = POINTER TO LinienBeschreibung;
+    LinienBeschreibung= RECORD (GraphischesObjekt) xStart*, yStart*, xEnde*, yEnde*: LONGINT; END;
+ 
+
+ 
+ 
+ 
+
+ VAR
+ 
+    punkt1: Punkt;
+    linie1: Linie;
+ 
+ BEGIN
+ 
+    NEW (punkt1);
+    punkt1.x := 1;
+    punkt1.y := 1;
+    punkt1.Zeichne ();
+ 
+    NEW (linie1);
+    linie1.xStart := 1;
+    linie1.yStart := 1;
+    linie1.xEnde := 2;
+    linie1.yEnde := 2;
+    linie1.Zeichne ();
+ 
+ END Vererbung1.
